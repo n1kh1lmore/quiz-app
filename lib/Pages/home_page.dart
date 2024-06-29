@@ -1,10 +1,16 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:awesome_dialog/awesome_dialog.dart';
+import 'package:bitblue_task/components/my_button.dart';
+import 'package:bitblue_task/constants/constants.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:animate_do/animate_do.dart'; // Import animate_do package
+import '../model/questions_model.dart';
 import '../services/auth/auth_service.dart';
+import '../services/quiz/quiz_services.dart';
 import 'result_page.dart';
+import 'package:shimmer/shimmer.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -18,10 +24,8 @@ class _HomePageState extends State<HomePage> {
   int currentPage = 0;
   int score = 0;
   List<String> selectedOptions = [];
-  List<Map<String, dynamic>> questions = [];
-
-  // Instance of auth
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  List<Question> questions = [];
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -29,27 +33,30 @@ class _HomePageState extends State<HomePage> {
     fetchQuestions();
   }
 
-  Future<void> fetchQuestions() async {
-    var fetchedQuestions = await getQuestions();
-    if (fetchedQuestions.length < 3) {
+  void fetchQuestions() {
+    final firebaseService = Provider.of<ChatService>(context, listen: false);
+    firebaseService.getQuestions().then((fetchedQuestions) {
+      if (fetchedQuestions.length < 3) {
+        setState(() {
+          questions = [];
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          questions = fetchedQuestions.take(5).toList();
+          selectedOptions = List<String>.filled(questions.length, '');
+        });
+      }
+    }).catchError((error) {
+      print('Error fetching questions: $error');
       setState(() {
         questions = [];
+        isLoading = false;
       });
-    } else {
-      setState(() {
-        questions = fetchedQuestions.take(5).toList();
-        selectedOptions = List<String>.filled(questions.length, '');
-      });
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> getQuestions() async {
-    var snapshot = await FirebaseFirestore.instance.collection('Test').get();
-    return snapshot.docs.map((doc) => doc.data()).toList();
+    });
   }
 
   void signOut() {
-    // Get auth service
     final authService = Provider.of<AuthService>(context, listen: false);
     authService.signOut();
   }
@@ -66,7 +73,8 @@ class _HomePageState extends State<HomePage> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => ResultPage(score: score, total: questions.length),
+            builder: (context) =>
+                ResultPage(score: score, total: questions.length),
           ),
         );
       }
@@ -75,35 +83,77 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quiz App'),
+        centerTitle: true,
+        title: Text(
+          'Quiz App',
+          style: GoogleFonts.lobster(
+            textStyle: const TextStyle(
+                fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+        ),
         backgroundColor: Colors.blueAccent,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.logout, color: Colors.white, size: 30),
+            onPressed: () {
+              AwesomeDialog(
+                context: context,
+                dialogType: DialogType.warning,
+                animType: AnimType.topSlide,
+                title: 'Logout',
+                desc: 'Are you sure you want to logout?',
+                btnCancelOnPress: () {},
+                btnOkOnPress: () {
+                  signOut();
+                },
+              ).show();
+            },
+          ),
+        ],
       ),
       body: questions.isEmpty
-          ? const Center(
-              child: Text(
-                'Not enough questions available',
-                style: TextStyle(fontSize: 20, color: Colors.red),
-              ),
-            )
+          ? isLoading
+              ? _buildShimmerLoading()
+              : Center(
+                  child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SvgPicture.asset(
+                      'assets/images/notfound.svg',
+                      height: screenHeight * 0.3,
+                      width: screenWidth * 0.3,
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      'No questions found',
+                      style: GoogleFonts.poppins(
+                        textStyle: const TextStyle(
+                            fontSize: 24, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    ButtonComponent(onTap: fetchQuestions, text: 'Retry')
+                  ],
+                ))
           : Container(
-              padding: const EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blueAccent, Colors.blue[100]!],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              padding: EdgeInsets.all(16.0),
               child: PageView.builder(
                 controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(),
+                physics: NeverScrollableScrollPhysics(),
                 itemCount: questions.length,
                 itemBuilder: (context, index) {
-                  return AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 500),
-                    transitionBuilder: (child, animation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: child,
-                      );
-                    },
-                    child: buildQuestionPage(index),
-                  );
+                  return buildQuestionPage(index);
                 },
               ),
             ),
@@ -112,93 +162,186 @@ class _HomePageState extends State<HomePage> {
 
   Widget buildQuestionPage(int questionIndex) {
     var question = questions[questionIndex];
-    var options = question['options'] as Map<String, dynamic>;
 
-    return FadeInDown(
-            duration: const Duration(milliseconds: 500),
-
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.5),
+                  spreadRadius: 2,
+                  blurRadius: 7,
+                  offset: Offset(0, 3),
+                ),
+              ],
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+            child: Text(
               'Question ${questionIndex + 1} of ${questions.length}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: Colors.blueAccent,
               ),
             ),
-            const SizedBox(height: 10),
-            Text(
-              question['title'],
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-              textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 40),
+          Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.5),
+                  spreadRadius: 2,
+                  blurRadius: 7,
+                  offset: Offset(0, 3),
+                ),
+              ],
+              borderRadius: BorderRadius.circular(16),
             ),
-            const SizedBox(height: 20),
-            for (var option in options.keys)
-              buildOptionTile(questionIndex, option, options[option]),
-          ],
-        ),
+            child: Column(
+              children: [
+                Text(
+                  question.title,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 20),
+                Column(
+                  children: question.options.entries.map((entry) {
+                    String optionKey = entry.key;
+                    String optionValue = entry.value;
+                    return buildOptionTile(
+                        questionIndex, optionKey, optionValue);
+                  }).toList(),
+                ),
+              ],
+            ),
+          )
+        ],
       ),
     );
   }
 
-  Widget buildOptionTile(int questionIndex, String optionKey, String optionValue) {
-    Color tileColor = Colors.transparent;
+  Widget buildOptionTile(
+      int questionIndex, String optionKey, String optionValue) {
+    Color tileColor = Colors.white;
     IconData? icon;
     if (selectedOptions[questionIndex] != '') {
-      tileColor = optionKey == questions[questionIndex]['correctOption']
-          ? Colors.green[100]!
+      tileColor = optionKey == questions[questionIndex].correctOption
+          ? kGreenColor
           : selectedOptions[questionIndex] == optionKey
-              ? Colors.red[100]!
-              : Colors.transparent;
-      icon = optionKey == questions[questionIndex]['correctOption']
+              ? kRedColor
+              : Colors.white;
+      icon = optionKey == questions[questionIndex].correctOption
           ? Icons.check
           : selectedOptions[questionIndex] == optionKey
               ? Icons.close
               : null;
     }
 
-    return FadeInDown(
+    return AnimatedContainer(
       duration: const Duration(milliseconds: 500),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 500),
-        margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
-        padding: const EdgeInsets.all(8.0),
-        decoration: BoxDecoration(
-          color: tileColor,
-          borderRadius: BorderRadius.circular(10.0),
-          border: Border.all(
-            color: selectedOptions[questionIndex] == optionKey
-                ? Colors.blueAccent
-                : Colors.grey,
-            width: 2.0,
+      margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
+      padding: const EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        color: tileColor,
+        borderRadius: BorderRadius.circular(10.0),
+        border: Border.all(
+          color: selectedOptions[questionIndex] == optionKey
+              ? Colors.blueAccent
+              : Colors.grey,
+          width: 2.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListTile(
+        leading: icon != null
+            ? Icon(icon, color: icon == Icons.check ? kGreenColor : kRedColor)
+            : null,
+        title: Text(
+          optionValue,
+          style: GoogleFonts.poppins(
+            textStyle: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black54,
+            ),
           ),
         ),
-        child: ListTile(
-          leading: icon != null ? Icon(icon, color: icon == Icons.check ? Colors.green : Colors.red) : null,
-          title: Text(
-            optionValue,
-            style: const TextStyle(fontSize: 18),
-          ),
-          onTap: (selectedOptions[questionIndex] == '')
-              ? () {
-                  setState(() {
-                    selectedOptions[questionIndex] = optionKey;
-                    if (selectedOptions[questionIndex] == questions[questionIndex]['correctOption']) {
-                      score++;
-                    }
-                    Future.delayed(const Duration(milliseconds: 500), goToNextPage);
-                  });
-                }
-              : null,
-        ),
+        onTap: selectedOptions[questionIndex] == ''
+            ? () {
+                setState(() {
+                  selectedOptions[questionIndex] = optionKey;
+                  if (selectedOptions[questionIndex] ==
+                      questions[questionIndex].correctOption) {
+                    score++;
+                  }
+                  Future.delayed(
+                      const Duration(milliseconds: 500), goToNextPage);
+                });
+              }
+            : null,
       ),
     );
+  }
+
+  Widget _buildShimmerLoading() {
+    return Shimmer.fromColors(
+        baseColor: Colors.grey[300]!,
+        highlightColor: Colors.grey[100]!,
+        period: Duration(milliseconds: 1000),
+        child: Center(
+          child: Column(
+            children: [
+              Spacer(),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  height: 60,
+                  width: 200,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  height: 100,
+                  width: 400,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(height: 30),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  height: 300,
+                  width: 400,
+                  color: Colors.white,
+                ),
+              ),
+              Spacer()
+            ],
+          ),
+        ));
   }
 }

@@ -90,7 +90,7 @@ class _ResultPageState extends State<ResultPage> {
               onPressed: () {
 Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomePage()));
               },
-              child: const Text('Go Back'),
+              child: const Text('Go Back', style: TextStyle(fontSize: 20, color: Colors.white)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blueAccent,
                 padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),

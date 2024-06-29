@@ -1,16 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../model/questions_model.dart';
+
 class ChatService extends ChangeNotifier {
-  // get instance of auth and firestore
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
-  final FirebaseFirestore _fireStore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-
-
-  //get questions
-  Stream<QuerySnapshot> getQuiz(String userId, String otherUserId) async* {
-   
+  Future<List<Question>> getQuestions() async {
+    try {
+      var snapshot = await _firestore.collection('Test').get();
+      return snapshot.docs.map((doc) => Question.fromJson(doc.data())).toList();
+    } catch (e) {
+      return [];
+    }
   }
 }

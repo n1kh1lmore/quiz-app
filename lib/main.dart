@@ -3,8 +3,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'services/auth/auth_gate.dart';
+import 'Pages/splash_screen.dart';
 import 'services/auth/auth_service.dart';
+import 'services/quiz/quiz_services.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,10 +17,13 @@ Future<void> main() async {
               messagingSenderId: "235353604058",
               projectId: "quiz-app-f9333"))
       : await Firebase.initializeApp();
-  runApp(ChangeNotifierProvider(
-    create: (context) => AuthService(),
-    child: const MyApp(),
-  ));
+  runApp( MultiProvider(
+      providers: [
+        ChangeNotifierProvider<ChatService>(create: (_) => ChatService()), 
+        ChangeNotifierProvider<AuthService>(create: (_) => AuthService()),
+      ],
+      child: const MyApp(),
+    ),);
 }
 
 class MyApp extends StatelessWidget {
@@ -28,9 +32,9 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return  MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: AuthGate(),
+      home: SplashScreen(),
     );
   }
 }

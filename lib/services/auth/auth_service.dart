@@ -53,4 +53,19 @@ class AuthService extends ChangeNotifier {
   Future<void> signOut() async {
     return await FirebaseAuth.instance.signOut();
   }
+
+  //password reset
+    Future<void> resetPassword(String email) async {
+    try {
+      await _firebaseAuth.sendPasswordResetEmail(email: email);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        throw Exception('No user found for that email.');
+      } else {
+        throw Exception('Failed to send reset email: ${e.message}');
+      }
+    } catch (e) {
+      throw Exception('Failed to send reset email: $e');
+    }
+  }
 }
