@@ -19,7 +19,7 @@ class ButtonComponent extends StatelessWidget {
           width: 200,
           decoration: BoxDecoration(
             color: Colors.blue,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Center(
             child: Text(

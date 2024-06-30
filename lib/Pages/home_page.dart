@@ -2,7 +2,6 @@ import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:bitblue_task/components/my_button.dart';
 import 'package:bitblue_task/constants/constants.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -13,7 +12,7 @@ import 'result_page.dart';
 import 'package:shimmer/shimmer.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -26,15 +25,19 @@ class _HomePageState extends State<HomePage> {
   List<String> selectedOptions = [];
   List<Question> questions = [];
   bool isLoading = true;
+  int lastScore = 0;
 
   @override
   void initState() {
     super.initState();
     fetchQuestions();
+    fetchLastScore();
   }
 
+
+//fetch questions from firebase
   void fetchQuestions() {
-    final firebaseService = Provider.of<ChatService>(context, listen: false);
+    final firebaseService = Provider.of<QuizService>(context, listen: false);
     firebaseService.getQuestions().then((fetchedQuestions) {
       if (fetchedQuestions.length < 3) {
         setState(() {
@@ -48,13 +51,27 @@ class _HomePageState extends State<HomePage> {
         });
       }
     }).catchError((error) {
-      print('Error fetching questions: $error');
       setState(() {
         questions = [];
         isLoading = false;
       });
     });
   }
+
+
+//fetch last score from firebase
+  void fetchLastScore() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId =  authService.getCurrentUserId();
+    if (userId != null) {
+      final quizService = Provider.of<QuizService>(context, listen: false);
+      final fetchedScore = await quizService.getLastScore(userId);
+      setState(() {
+        lastScore = fetchedScore;
+      });
+    }
+  }
+
 
   void signOut() {
     final authService = Provider.of<AuthService>(context, listen: false);
@@ -98,7 +115,7 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.blueAccent,
         actions: [
           IconButton(
-            icon: Icon(Icons.logout, color: Colors.white, size: 30),
+            icon: const Icon(Icons.logout, color: Colors.white, size: 30),
             onPressed: () {
               AwesomeDialog(
                 context: context,
@@ -127,7 +144,7 @@ class _HomePageState extends State<HomePage> {
                       height: screenHeight * 0.3,
                       width: screenWidth * 0.3,
                     ),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
                     Text(
                       'No questions found',
                       style: GoogleFonts.poppins(
@@ -135,7 +152,7 @@ class _HomePageState extends State<HomePage> {
                             fontSize: 24, fontWeight: FontWeight.bold),
                       ),
                     ),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
                     ButtonComponent(onTap: fetchQuestions, text: 'Retry')
                   ],
                 ))
@@ -147,10 +164,10 @@ class _HomePageState extends State<HomePage> {
                   end: Alignment.bottomCenter,
                 ),
               ),
-              padding: EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16.0),
               child: PageView.builder(
                 controller: _pageController,
-                physics: NeverScrollableScrollPhysics(),
+                physics: const NeverScrollableScrollPhysics(),
                 itemCount: questions.length,
                 itemBuilder: (context, index) {
                   return buildQuestionPage(index);
@@ -167,6 +184,7 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -175,24 +193,62 @@ class _HomePageState extends State<HomePage> {
                   color: Colors.grey.withOpacity(0.5),
                   spreadRadius: 2,
                   blurRadius: 7,
-                  offset: Offset(0, 3),
+                  offset: const Offset(0, 3),
                 ),
               ],
               borderRadius: BorderRadius.circular(10),
             ),
-            padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
             child: Text(
               'Question ${questionIndex + 1} of ${questions.length}',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: Colors.blueAccent,
               ),
             ),
           ),
-          SizedBox(height: 40),
-          Container(
-            padding: EdgeInsets.all(20),
+          const SizedBox(height: 40),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFe8cefe), Colors.white, Colors.white],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.5),
+                      spreadRadius: 2,
+                      blurRadius: 7,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                  borderRadius: BorderRadius.circular(40)),
+              child: Column(
+                children: [
+                  Text(
+                    "(${currentPage + 1}) ${question.title}",
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  Column(
+                    children: question.options.entries.map((entry) {
+                      String optionKey = entry.key;
+                      String optionValue = entry.value;
+                      return buildOptionTile(
+                          questionIndex, optionKey, optionValue);
+                    }).toList(),
+                  ),
+                  const Spacer(),
+                  Container(
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
@@ -200,32 +256,23 @@ class _HomePageState extends State<HomePage> {
                   color: Colors.grey.withOpacity(0.5),
                   spreadRadius: 2,
                   blurRadius: 7,
-                  offset: Offset(0, 3),
+                  offset: const Offset(0, 3),
                 ),
               ],
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Column(
-              children: [
-                Text(
-                  question.title,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 20),
-                Column(
-                  children: question.options.entries.map((entry) {
-                    String optionKey = entry.key;
-                    String optionValue = entry.value;
-                    return buildOptionTile(
-                        questionIndex, optionKey, optionValue);
-                  }).toList(),
-                ),
-              ],
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+            child: Text(
+              'Last Score: $lastScore',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.blueAccent,
+              ),
+            ),
+          ),
+                ],
+              ),
             ),
           )
         ],
@@ -256,14 +303,14 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         color: tileColor,
-        borderRadius: BorderRadius.circular(10.0),
+        borderRadius: BorderRadius.circular(50.0),
         border: Border.all(
           color: selectedOptions[questionIndex] == optionKey
               ? Colors.blueAccent
               : Colors.grey,
           width: 2.0,
         ),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
             color: Colors.black26,
             blurRadius: 6,
@@ -278,7 +325,7 @@ class _HomePageState extends State<HomePage> {
         title: Text(
           optionValue,
           style: GoogleFonts.poppins(
-            textStyle: TextStyle(
+            textStyle: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Colors.black54,
@@ -306,11 +353,11 @@ class _HomePageState extends State<HomePage> {
     return Shimmer.fromColors(
         baseColor: Colors.grey[300]!,
         highlightColor: Colors.grey[100]!,
-        period: Duration(milliseconds: 1000),
+        period: const Duration(milliseconds: 1000),
         child: Center(
           child: Column(
             children: [
-              Spacer(),
+              const Spacer(),
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
@@ -319,7 +366,7 @@ class _HomePageState extends State<HomePage> {
                   color: Colors.white,
                 ),
               ),
-              SizedBox(
+              const SizedBox(
                 height: 20,
               ),
               ClipRRect(
@@ -330,7 +377,7 @@ class _HomePageState extends State<HomePage> {
                   color: Colors.white,
                 ),
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
@@ -339,7 +386,7 @@ class _HomePageState extends State<HomePage> {
                   color: Colors.white,
                 ),
               ),
-              Spacer()
+              const Spacer()
             ],
           ),
         ));

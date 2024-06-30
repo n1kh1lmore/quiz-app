@@ -5,6 +5,7 @@ class TextFieldComponent extends StatelessWidget {
   final TextEditingController controller;
   final TextInputType keyboardType;
   final bool obscureText;
+  final String? Function(String?)? validator; 
 
   const TextFieldComponent({
     super.key,
@@ -12,24 +13,28 @@ class TextFieldComponent extends StatelessWidget {
     required this.controller,
     required this.keyboardType,
     required this.obscureText,
+    this.validator,
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return TextFormField( 
       controller: controller,
       keyboardType: keyboardType,
       obscureText: obscureText,
+      validator: validator, 
       decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.5),
         hintText: hintText,
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(
             color: Colors.grey,
           ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(20),
           borderSide: const BorderSide(
             color: Colors.blue,
           ),

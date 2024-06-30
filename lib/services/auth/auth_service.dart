@@ -68,4 +68,9 @@ class AuthService extends ChangeNotifier {
       throw Exception('Failed to send reset email: $e');
     }
   }
+
+    String? getCurrentUserId() {
+    User? user = _firebaseAuth.currentUser;
+    return user?.uid;
+  }
 }

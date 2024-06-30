@@ -1,6 +1,9 @@
+import 'package:bitblue_task/components/my_button.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'home_page.dart';
 
@@ -8,16 +11,17 @@ class ResultPage extends StatefulWidget {
   final int score;
   final int total;
 
-  const ResultPage({Key? key, required this.score, required this.total}) : super(key: key);
+  const ResultPage({super.key, required this.score, required this.total});
 
   @override
   State<ResultPage> createState() => _ResultPageState();
 }
 
 class _ResultPageState extends State<ResultPage> {
-    final FirebaseAuth _auth = FirebaseAuth.instance;
-      final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
   Future<void> saveOrUpdateScore() async {
     User? user = _auth.currentUser;
@@ -41,63 +45,111 @@ class _ResultPageState extends State<ResultPage> {
     // TODO: implement initState
     super.initState();
     saveOrUpdateScore();
+    _sendNotification();
   }
 
+  Future<void> _sendNotification() async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'quiz_app_channel',
+      'Quiz App Notifications',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: false,
+    );
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    await flutterLocalNotificationsPlugin.show(
+      0,
+      'Test Finished!',
+      'You scored ${widget.score} out of ${widget.total}',
+      platformChannelSpecifics,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quiz Result'),
+        centerTitle: true,
+        title: Text(
+          'Quiz App',
+          style: GoogleFonts.lobster(
+            textStyle: const TextStyle(
+                fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+        ),
         backgroundColor: Colors.blueAccent,
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Your Score',
-              style: TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.bold,
-                color: Colors.blueAccent,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.blueAccent, Colors.blue.shade100],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Center(
+          child: Container(
+            height: size.height * 0.5,
+            width: size.width * 0.8,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFe8cefe), Colors.white],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
               ),
+              borderRadius: BorderRadius.circular(40),
             ),
-            const SizedBox(height: 20),
-            Text(
-              '${widget.score} / ${widget.total}',
-              style: TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-                color: widget.score == widget.total ? Colors.green : Colors.red,
-              ),
-            ),
-            if (widget.score == widget.total)
-        const      Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  'Congratulations! Perfect Score!',
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Your Score',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 30,
                     fontWeight: FontWeight.bold,
-                    color: Colors.green,
+                    color: Colors.blueAccent,
                   ),
-                  textAlign: TextAlign.center,
                 ),
-              ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomePage()));
-              },
-              child: const Text('Go Back', style: TextStyle(fontSize: 20, color: Colors.white)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueAccent,
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                textStyle: const TextStyle(fontSize: 20),
-              ),
+                const SizedBox(height: 20),
+                Text(
+                  '${widget.score} / ${widget.total}',
+                  style: TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: widget.score == widget.total
+                        ? Colors.green
+                        : Colors.red,
+                  ),
+                ),
+                if (widget.score == widget.total)
+                  const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Text(
+                      'Congratulations! Perfect Score!',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                const SizedBox(height: 20),
+                ButtonComponent(
+                    onTap: () {
+                      Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const HomePage()));
+                    },
+                    text: 'Play Again')
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

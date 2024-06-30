@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 import '../services/auth/auth_gate.dart';
 
-
 class SplashScreen extends StatefulWidget {
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -18,21 +17,21 @@ class _SplashScreenState extends State<SplashScreen> {
     checkConnectivity();
   }
 
-  void checkConnectivity() async {
+ void checkConnectivity() async {
     var connectivityResult = await (Connectivity().checkConnectivity());
     if (connectivityResult.contains(ConnectivityResult.mobile) ||
         connectivityResult.contains(ConnectivityResult.wifi)) {
-      Timer(Duration(seconds: 3), () {
+      Timer(const Duration(seconds: 2), () {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => AuthGate()),
+          MaterialPageRoute(builder: (context) => const AuthGate()),
         );
       });
     } else {
-      Timer(Duration(seconds: 3), () {
+      Timer(const Duration(seconds: 3), () {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => NoInternetScreen()),
+          MaterialPageRoute(builder: (context) => NoInternetScreen(onRetry: checkConnectivity)),
         );
       });
     }
@@ -60,8 +59,11 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-
 class NoInternetScreen extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  NoInternetScreen({required this.onRetry});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -75,20 +77,31 @@ class NoInternetScreen extends StatelessWidget {
               height: 200,
               width: 200,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Text(
               'No Internet Connection',
               style: GoogleFonts.poppins(
-                textStyle: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                textStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
             ),
-            
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue, 
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+              ),
+              child: Text(
+                'Retry',
+                style: GoogleFonts.poppins(
+                  textStyle: const TextStyle(fontSize: 18),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
-
-
 }
-
