@@ -17,7 +17,7 @@ class _SplashScreenState extends State<SplashScreen> {
     checkConnectivity();
   }
 
- void checkConnectivity() async {
+  void checkConnectivity() async {
     var connectivityResult = await (Connectivity().checkConnectivity());
     if (connectivityResult.contains(ConnectivityResult.mobile) ||
         connectivityResult.contains(ConnectivityResult.wifi)) {
@@ -31,7 +31,9 @@ class _SplashScreenState extends State<SplashScreen> {
       Timer(const Duration(seconds: 3), () {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => NoInternetScreen(onRetry: checkConnectivity)),
+          MaterialPageRoute(
+              builder: (context) =>
+                  NoInternetScreen(onRetry: checkConnectivity)),
         );
       });
     }
@@ -81,16 +83,30 @@ class NoInternetScreen extends StatelessWidget {
             Text(
               'No Internet Connection',
               style: GoogleFonts.poppins(
-                textStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                textStyle:
+                    const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: onRetry,
+              onPressed: () async {
+                var connectivityResult =
+                    await (Connectivity().checkConnectivity());
+                if (connectivityResult.contains(ConnectivityResult.mobile) ||
+                    connectivityResult.contains(ConnectivityResult.wifi)) {
+                  Timer(const Duration(seconds: 1), () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => const AuthGate()),
+                    );
+                  });
+                }
+              },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue, 
+                backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
               ),
               child: Text(
                 'Retry',

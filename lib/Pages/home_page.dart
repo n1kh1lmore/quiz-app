@@ -1,6 +1,7 @@
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:bitblue_task/components/my_button.dart';
 import 'package:bitblue_task/constants/constants.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,6 +11,8 @@ import '../services/auth/auth_service.dart';
 import '../services/quiz/quiz_services.dart';
 import 'result_page.dart';
 import 'package:shimmer/shimmer.dart';
+
+import 'splash_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -73,9 +76,14 @@ class _HomePageState extends State<HomePage> {
   }
 
 
-  void signOut() {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    authService.signOut();
+  void signOut() async{
+    await FirebaseAuth.instance.signOut();
+Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(builder: (context) => SplashScreen()),
+    (Route<dynamic> route) => false, 
+  );    // final authService = Provider.of<AuthService>(context, listen: false);
+    // authService.signOut();
   }
 
   void goToNextPage() {
